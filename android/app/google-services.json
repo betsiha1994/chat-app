@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "80445007326",
+    "project_id": "asru-chat-app-1234",
+    "storage_bucket": "asru-chat-app-1234.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:80445007326:android:e774b3ae2f2a224190e94f",
+        "android_client_info": {
+          "package_name": "com.example.chat_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD7Y5YQ0FgyFHCJm23R7uG03K5pk7ViFg4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

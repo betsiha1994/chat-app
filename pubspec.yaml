@@ -1,0 +1,38 @@
+name: chat_app
+description: "A personal chat app built with Flutter and Firebase."
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # Firebase core packages
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.0
+  cloud_firestore: ^5.5.0
+  firebase_storage: ^12.1.1
+  image_picker: ^1.1.2
+  file_picker: ^8.1.2
+  url_launcher: ^6.3.1
+  video_player: ^2.6.0
+  # just_audio: ^0.9.37
+  # video_player: ^2.8.3
+  http: ^1.5.0
+  flutter_dotenv: ^5.1.0
+  # Push notifications
+  firebase_messaging: 15.2.10
+  flutter_local_notifications: ^15.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
