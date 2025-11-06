@@ -146,69 +146,97 @@ class ChatService {
     String fileName,
     Uint8List fileBytes,
   ) async {
-  final currentUser = _auth.currentUser!;
-  final chatId = getChatId(currentUser.uid, receiverId);
+    final currentUser = _auth.currentUser!;
+    final chatId = getChatId(currentUser.uid, receiverId);
 
-  try {
-    // Load Cloudinary info from .env
-    final cloudName = dotenv.env['CLOUDINARY_CLOUD_NAME'];
-    final uploadPreset = 'YOUR_UNSIGNED_UPLOAD_PRESET'; // create in Cloudinary dashboard
-    final url = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/auto/upload');
+    try {
+      final cloudName = dotenv.env['CLOUDINARY_CLOUD_NAME'];
+      final uploadPreset = dotenv.env['CLOUDINARY_UPLOAD_PRESET'];
 
-    final base64File = base64Encode(fileBytes);
+      if (cloudName == null || uploadPreset == null) {
+        throw Exception('Cloudinary configuration missing');
+      }
 
-    final response = await http.post(
-      url,
-      body: {
-        'file': 'data:application/octet-stream;base64,$base64File',
-        'upload_preset': uploadPreset,
-        'public_id': 'uploads/$fileName',
-      },
-    );
+      final url = Uri.parse(
+        'https://api.cloudinary.com/v1_1/$cloudName/auto/upload',
+      );
 
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw Exception('Cloudinary upload failed: ${response.body}');
+      print('📤 Uploading file: $fileName');
+
+      var request = http.MultipartRequest('POST', url);
+      request.files.add(
+        http.MultipartFile.fromBytes('file', fileBytes, filename: fileName),
+      );
+      request.fields['upload_preset'] = uploadPreset;
+
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+
+      if (response.statusCode != 200) {
+        throw Exception('Cloudinary upload failed: $responseBody');
+      }
+
+      final data = jsonDecode(responseBody);
+      final downloadUrl = data['secure_url'];
+
+      // Save to Firestore
+      final message = Message(
+        id: '',
+        senderId: currentUser.uid,
+        receiverId: receiverId,
+        message: fileName,
+        fileUrl: downloadUrl,
+        timestamp: DateTime.now(),
+        status: "sent",
+      );
+
+      final batch = _firestore.batch();
+      final messageRef = _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .doc();
+      batch.set(messageRef, message.toMap());
+
+      final chatRef = _firestore.collection('chats').doc(chatId);
+      batch.set(chatRef, {
+        'participants': [currentUser.uid, receiverId],
+        'lastMessage': '[File: $fileName]',
+        'lastMessageTime': FieldValue.serverTimestamp(),
+        'lastMessageSender': currentUser.uid,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      await batch.commit();
+      print('✅ File uploaded successfully: $fileName');
+    } catch (e) {
+      print('❌ Error sending file: $e');
+      rethrow;
     }
+  }
 
-    final data = jsonDecode(response.body);
-    final downloadUrl = data['secure_url'];
-
-    // Save message in Firestore
-    final message = Message(
-      id: '',
-      senderId: currentUser.uid,
-      receiverId: receiverId,
-      message: '',
-      fileUrl: downloadUrl,
-      timestamp: DateTime.now(),
-      status: "sent",
-    );
-
-    final batch = _firestore.batch();
-
-    final messageRef = _firestore
+  Future<void> deleteMessage(String chatId, String messageId) async {
+    await _firestore
         .collection('chats')
         .doc(chatId)
         .collection('messages')
-        .doc();
-    batch.set(messageRef, message.toMap());
-
-    final chatRef = _firestore.collection('chats').doc(chatId);
-    batch.set(chatRef, {
-      'participants': [currentUser.uid, receiverId],
-      'lastMessage': '[File]',
-      'lastMessageTime': FieldValue.serverTimestamp(),
-      'lastMessageSender': currentUser.uid,
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-
-    await batch.commit();
-    print('✅ File message sent successfully via Cloudinary: $fileName');
-  } catch (e) {
-    print('❌ Error sending file via Cloudinary: $e');
-    rethrow;
+        .doc(messageId)
+        .delete();
   }
-}
+
+  Future<void> editMessage(
+    String chatId,
+    String messageId,
+    String newText,
+  ) async {
+    await _firestore
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .doc(messageId)
+        .update({'message': newText, 'edited': true});
+  }
+
   // -----------------------
   // STREAM MESSAGES
   // -----------------------
